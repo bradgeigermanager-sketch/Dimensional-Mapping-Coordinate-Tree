@@ -1,0 +1,27 @@
+body {
+  background: #0b0b0f;
+  color: #cdd6f4;
+  font-family: Arial, sans-serif;
+  margin: 20px;
+}
+h1 {
+  color: #89b4fa;
+  margin-bottom: 20px;
+}
+.panel {
+  background: #11111b;
+  border: 2px solid #45475a;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+#controls-container {
+  width: 300px;
+  float: left;
+}
+#hybrid-viewport {
+  margin-left: 340px;
+  border: 1px solid #45475a;
+  background: #0b0b0f;
+  border-radius: 8px;
+}
