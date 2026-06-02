@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dimensional Tracking Engine</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <h1>Dimensional Tracking Engine</h1>
+
+  <div id="controls-container">
+    <!-- Hybrid Mode -->
+    <section id="hybrid-mode-panel" class="panel">
+      <h3>Hybrid Geometry Mode</h3>
+      <label><input type="radio" name="hybrid-mode" value="standard" checked> Standard Collapse</label><br>
+      <label><input type="radio" name="hybrid-mode" value="radial"> Radial Shell Mode</label><br>
+      <label><input type="radio" name="hybrid-mode" value="radial-rel3d"> Radial Shell + Relational 3D</label>
+    </section>
+
+    <!-- Rotation -->
+    <section id="rotation-controls" class="panel">
+      <h3>Rotation</h3>
+      <label>Yaw</label>
+      <input type="range" id="rot-yaw" min="-180" max="180" value="0">
+      <label>Pitch</label>
+      <input type="range" id="rot-pitch" min="-90" max="90" value="0">
+      <label>Roll</label>
+      <input type="range" id="rot-roll" min="-180" max="180" value="0">
+    </section>
+
+    <!-- Zoom -->
+    <section id="zoom-controls" class="panel">
+      <h3>Zoom</h3>
+      <input type="range" id="zoom-level" min="0.2" max="3.0" value="1.0" step="0.05">
+    </section>
+
+    <!-- Tree Mode -->
+    <section id="tree-mode-panel" class="panel">
+      <h3>Tree Visualization</h3>
+      <label><input type="checkbox" id="tree-visualization-toggle"> Enable Tree Mode</label>
+    </section>
+
+    <!-- Measurements -->
+    <section id="measurements-panel" class="panel">
+      <h3>Hybrid Measurements</h3>
+      <label>Point A</label>
+      <select id="measure-point-a"></select>
+      <label>Point B</label>
+      <select id="measure-point-b"></select>
+      <button id="compute-measure-btn">Compute</button>
+      <div id="measurement-output"></div>
+    </section>
+
+    <!-- Multi-Select Measurements -->
+    <section id="multi-measure-panel" class="panel">
+      <h3>Selectable Measurements</h3>
+      <select id="multi-measure-select" multiple size="6"></select>
+      <button id="compute-multi-btn">Compute Chain</button>
+      <div id="multi-measure-output"></div>
+    </section>
+  </div>
+
+  <!-- Visualization Canvas -->
+  <canvas id="hybrid-viewport" width="800" height="600"></canvas>
+
+  <!-- JS Modules -->
+  <script src="app.js"></script>
+  <script src="rotation_controls.js"></script>
+  <script src="zoom_controls.js"></script>
+  <script src="hybrid_visualization.js"></script>
+  <script src="tree_mode.js"></script>
+  <script src="measurements_panel.js"></script>
+</body>
+</html>
