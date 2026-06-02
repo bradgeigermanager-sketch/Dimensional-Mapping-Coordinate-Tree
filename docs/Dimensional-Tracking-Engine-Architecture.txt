@@ -1,0 +1,318 @@
+# Engine architecture document
+
+## 1. Overview
+
+**Name:** Dimensional Tracking Engine  
+**Purpose:** Represent, transform, and measure entities in a 10‑dimensional space, then expose stable, interpretable geometries for visualization and analysis.
+
+Core capabilities:
+
+- **10D coordinate model** with explicit semantic dimensions  
+- **Relational projection** from 6D → 3D  
+- **Hybrid manifold geometry** (radial + relational)  
+- **Tree‑space mapping** for visualization  
+- **Constraint propagation** via entanglement  
+- **Measurement chains** across sequences of points  
+- **Unified public API** via `engine.__init__`
+
+---
+
+## 2. Data model
+
+### 2.1 Coordinate10D (`coordinate10d.py`)
+
+**Class:** `Coordinate10D`
+
+**Dimensions:**
+
+- **x, y, z:** collapsed spatial axes  
+- **w:** radial shell dimension  
+- **v, u, q, p, s, f:** relational axes  
+
+**Key methods:**
+
+- **`__init__(x, y, z, w, v, u, q, p, s, f, label=None)`**  
+  - Casts all dimensions to `float`  
+  - Stores optional `label` (default `"10D_Node"`)
+
+- **`to_vector()`**  
+  - Returns:
+    \[
+    [x, y, z, w, v, u, q, p, s, f]
+    \]
+
+- **`__repr__()`**  
+  - Debug‑friendly representation: `<10D label: [vector]>`
+
+This is the canonical entity type used across all engine modules.
+
+---
+
+## 3. Core transformation subsystems
+
+### 3.1 Relational projection (`relational_projection.py`)
+
+**Goal:** Map the 6 relational dimensions into a stable 3D relational space.
+
+- **Projection matrix `P`**  
+  - Shape: \(3 \times 6\)  
+  - Rows normalized to unit length:
+    \[
+    P = \frac{P}{\|P_{\text{row}}\|}
+    \]
+
+- **Function:** `relational3D(point)`
+
+  - Input: `Coordinate10D`  
+  - Builds vector:
+    \[
+    H = [v, u, q, p, s, f]
+    \]
+  - Returns:
+    \[
+    [X_{\text{rel}}, Y_{\text{rel}}, Z_{\text{rel}}] = P \cdot H
+    \]
+
+**Consumers:** `hybrid_geometry`, `tree_geometry`, measurements, visualization.
+
+---
+
+### 3.2 Hybrid geometry (`hybrid_geometry.py`)
+
+**Goal:** Define a 4D hybrid manifold combining radial shell and relational projection.
+
+- **`hybrid_vector(point)`**
+
+  - Computes:
+    - \( r = |w| \) (radial shell magnitude)  
+    - \((X_{\text{rel}}, Y_{\text{rel}}, Z_{\text{rel}}) = relational3D(point)\)
+  - Returns NumPy vector:
+    \[
+    [r, X_{\text{rel}}, Y_{\text{rel}}, Z_{\text{rel}}]
+    \]
+
+- **`hybrid_distance(A, B)`**
+
+  - Computes Euclidean distance:
+    \[
+    d(A,B) = \| hybrid\_vector(B) - hybrid\_vector(A) \|
+    \]
+
+- **`hybrid_angle(A, B)`**
+
+  - Uses:
+    \[
+    \theta = \arccos\left( \text{clamp}\left( \frac{a \cdot b}{\|a\|\|b\|}, -1, 1 \right) \right)
+    \]
+    where \(a = hybrid\_vector(A)\), \(b = hybrid\_vector(B)\)  
+  - Handles zero‑norm vectors by returning `0.0`.
+
+**Role:** Core metric space for distances and orientations in the engine.
+
+---
+
+### 3.3 Tree geometry (`tree_geometry.py`)
+
+**Goal:** Map 10D points into a tree‑like 3D visualization space.
+
+- **`tree_coords(point)`**
+
+  - Computes:
+    - **height:** \( |w| \)  
+    - **spread:** from `relational3D(point)` → \((x_r, y_r, z_r)\)
+  - Returns:
+    \[
+    (x_r, |w|, z_r)
+    \]
+
+**Interpretation:**
+
+- Vertical axis = radial shell  
+- Horizontal spread = relational structure  
+- Used directly by the UI to place nodes in a tree layout.
+
+---
+
+## 4. Constraint propagation subsystem
+
+### 4.1 Entanglement engine (`entanglement.py`)
+
+**Class:** `EntanglementEngine`
+
+**Goal:** Propagate changes in one dimension to others via configurable bonds.
+
+- **Internal state:**
+
+  - `self.bonds: dict[(src_dim, tgt_dim) → {"ratio": r, "type": "linear|inverse"}]`
+
+- **`create_bond(src, tgt, ratio=1.0, bond_type="linear")`**
+
+  - Defines a bond from `src` dimension to `tgt` dimension.
+
+- **`process(entity, modified_dim, delta)`**
+
+  - For each bond where `src == modified_dim`:
+    - **Linear bond:**
+      \[
+      tgt \mathrel{+}= \Delta \cdot ratio
+      \]
+    - **Inverse bond (if \(\Delta \neq 0\)):**
+      \[
+      tgt \mathrel{/}= \Delta \cdot ratio
+      \]
+  - Uses `getattr`/`setattr` on `entity`, so it works with `Coordinate10D` or any compatible object.
+
+**Role:** Encodes mechanical/relational constraints between dimensions.
+
+---
+
+## 5. Measurement subsystem
+
+### 5.1 Chain measurements (`measurements.py`)
+
+**Function:** `chain_measurements(points)`
+
+**Goal:** Compute hybrid metrics across a sequence of points.
+
+- Input: iterable of `Coordinate10D` instances  
+- For each adjacent pair \((A, B)\):
+
+  - Captures:
+    - `"A"`: `A.label`  
+    - `"B"`: `B.label`  
+    - `"radial_A"`: \(|A.w|\)  
+    - `"radial_B"`: \(|B.w|\)  
+    - `"hybrid_distance"`: `hybrid_distance(A, B)`  
+    - `"hybrid_angle"`: `hybrid_angle(A, B)`
+
+- Returns: list of dicts, one per adjacent pair.
+
+**Role:** Feeds the measurement panel / analytics layer with interpretable metrics.
+
+---
+
+## 6. Supporting utilities
+
+### 6.1 Matrix transformer (`matrix_transformer.py`)
+
+**Function:** `rotation_matrix(yaw, pitch, roll)`
+
+- Builds 3D rotation matrix using ZYX convention:
+
+  - \(R_z(\text{yaw})\)  
+  - \(R_y(\text{pitch})\)  
+  - \(R_x(\text{roll})\)
+
+- Returns:
+  \[
+  R = R_z \cdot R_y \cdot R_x
+  \]
+
+**Role:** Rotate relational 3D vectors for visualization/camera transforms.
+
+---
+
+### 6.2 Generic utilities (`utils.py`)
+
+**Function:** `clamp(x, lo, hi)`
+
+- Returns:
+  \[
+  \max(lo, \min(hi, x))
+  \]
+
+**Role:** Numerical stability (e.g., clamping cosines before `arccos`).
+
+---
+
+## 7. Collapse subsystem (radial shell)
+
+### 7.1 Collapse (`collapse.py`)
+
+*(You didn’t paste it in this turn, but from earlier extraction we know its role.)*
+
+**Key idea:** Provide `radial_shell` and related helpers to derive radial properties from the 10D point (primarily `w` and possibly others), used by:
+
+- `__init__.py` (exported)  
+- Hybrid geometry  
+- Tree geometry  
+- Measurements
+
+---
+
+## 8. Public API surface (`__init__.py`)
+
+The engine’s **official exports**:
+
+- From `coordinate10d`:
+  - **`Coordinate10D`**
+
+- From `entanglement`:
+  - **`EntanglementEngine`**
+
+- From `collapse`:
+  - **`radial_shell`**
+
+- From `relational_projection`:
+  - **`relational3D`**
+
+- From `hybrid_geometry`:
+  - **`hybrid_vector`**
+  - **`hybrid_distance`**
+  - **`hybrid_angle`**
+
+- From `tree_geometry`:
+  - **`tree_coords`**
+
+- From `measurements`:
+  - **`chain_measurements`**
+
+### Example usage
+
+```python
+from engine import (
+    Coordinate10D,
+    EntanglementEngine,
+    radial_shell,
+    relational3D,
+    hybrid_vector,
+    hybrid_distance,
+    hybrid_angle,
+    tree_coords,
+    chain_measurements,
+)
+```
+
+This gives consumers a clean, high‑level interface without needing to know the internal file layout.
+
+---
+
+## 9. Typical data flow
+
+### 9.1 Single point lifecycle
+
+1. **Create point:**  
+   `p = Coordinate10D(..., label="NodeA")`
+
+2. **Apply entanglement (optional):**  
+   `engine.process(p, "v", delta=+0.5)`
+
+3. **Relational projection:**  
+   `Xrel, Yrel, Zrel = relational3D(p)`
+
+4. **Hybrid manifold:**  
+   `h = hybrid_vector(p)`
+
+5. **Tree coordinates:**  
+   `x_tree, h_tree, z_tree = tree_coords(p)`
+
+6. **Radial shell:**  
+   `r = radial_shell(p)`
+
+### 9.2 Sequence measurements
+
+1. Build list: `[p0, p1, p2, ...]`  
+2. Call: `results = chain_measurements(points)`  
+3. Use `results` to populate measurement tables, timelines, or visual overlays.
+
+---
