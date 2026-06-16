@@ -18,3 +18,8 @@ def run_pipeline(points, mode="hybrid"):
 
     else:
         raise ValueError("Unknown mode")
+        
+def reconstruction_error(pca, data):
+    projected = pca.transform(data)
+    reconstructed = pca.inverse_transform(projected)
+    return np.mean((data - reconstructed) ** 2)
