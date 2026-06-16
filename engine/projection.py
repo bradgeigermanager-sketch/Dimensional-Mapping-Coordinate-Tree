@@ -1,20 +1,17 @@
 import numpy as np
 
-def project_to_hybrid(v):
-    """
-    Convert 10D vector → hybrid 4D representation
-    """
+def hybrid_with_pca(points):
+    rel_matrix = np.array([p.relational() for p in points])
 
-    # Radial component
-    r = abs(v.w)
+    pca = PCA(n_components=3)
+    rel_3d = pca.fit_transform(rel_matrix)
 
-    # Relational dimensions (6D → 3D projection)
-    rel = np.array([v.v, v.u, v.q, v.p, v.s, v.f])
+    hybrid = []
 
-    # Simple deterministic projection
-    Xrel = rel[0] + rel[1]
-    Yrel = rel[2] + rel[3]
-    Zrel = rel[4] + rel[5]
+    for i, p in enumerate(points):
+        r = abs(p.w)
+        Xrel, Yrel, Zrel = rel_3d[i]
 
-    return (r, Xrel, Yrel, Zrel)
-``
+        hybrid.append((r, Xrel, Yrel, Zrel))
+
+    return hybrid
