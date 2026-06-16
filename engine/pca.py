@@ -7,6 +7,9 @@ class PCAProjector:
         self.model = PCA(n_components=n_components)
         self.fitted = False
 
+    def explained_variance(self):
+    return self.model.explained_variance_ratio_
+    
     def fit(self, vectors):
         """
         Fit PCA model on dataset
