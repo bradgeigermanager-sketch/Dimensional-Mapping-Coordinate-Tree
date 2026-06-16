@@ -68,6 +68,26 @@ The UI is modular:
 
 Each module is independent and communicates through shared state.
 
+
+# Architecture
+
+## Pipeline
+
+1. Load data (10D vectors)
+2. Apply constraints
+3. Project to hybrid space (4D)
+4. Render in 3D
+
+## Modules
+
+- vector.py → data structure
+- projection.py → dimensional reduction
+- distance.py → measurements
+- pipeline.py → orchestration
+
+## Data Flow
+
+JSON → Vector10D → Hybrid → UI
 ## 7. Data Flow
 10D Point → Hybrid Vector → Visualization → Measurements
 
