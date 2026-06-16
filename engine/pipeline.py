@@ -1,10 +1,20 @@
 from .projection import project_to_hybrid
+from .pca import PCAProjector
 
-def run_pipeline(points):
-    hybrid_points = []
+def run_pipeline(points, mode="hybrid"):
+    """
+    mode:
+      - "hybrid" (your original system)
+      - "pca" (new)
+    """
 
-    for p in points:
-        h = project_to_hybrid(p)
-        hybrid_points.append(h)
+    if mode == "hybrid":
+        return [project_to_hybrid(p) for p in points]
 
-    return hybrid_points
+    elif mode == "pca":
+        projector = PCAProjector(n_components=3)
+        projector.fit(points)
+        return projector.transform(points)
+
+    else:
+        raise ValueError("Unknown mode")
